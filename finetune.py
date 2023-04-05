@@ -51,6 +51,7 @@ def train(
     # wandb params
     wandb_project: str = "",
     wandb_run_name: str = "",
+    run_name: str = "",
     wandb_watch: str = "",  # options: false | gradients | all
     wandb_log_model: str = "",  # options: false | true
     resume_from_checkpoint: str = None,  # either training checkpoint or final adapter
@@ -76,6 +77,7 @@ def train(
             f"group_by_length: {group_by_length}\n"
             f"wandb_project: {wandb_project}\n"
             f"wandb_run_name: {wandb_run_name}\n"
+            f"run_name: {run_name}\n"
             f"wandb_watch: {wandb_watch}\n"
             f"wandb_log_model: {wandb_log_model}\n"
             f"resume_from_checkpoint: {resume_from_checkpoint or False}\n"
@@ -219,8 +221,8 @@ def train(
 
     if not ddp and torch.cuda.device_count() > 1:
         # keeps Trainer from trying its own DataParallelism when more than 1 gpu is available
-        model.is_parallelizable = True
-        model.model_parallel = True
+        model.is_parallelizable = False
+        model.model_parallel = False
 
     trainer = transformers.Trainer(
         model=model,
@@ -242,10 +244,10 @@ def train(
             output_dir=output_dir,
             save_total_limit=3,
             load_best_model_at_end=True if val_set_size > 0 else False,
-            ddp_find_unused_parameters=False if ddp else None,
+            ddp_find_unused_parameters=False,
             group_by_length=group_by_length,
             report_to="wandb" if use_wandb else None,
-            run_name=wandb_run_name if use_wandb else None,
+            run_name=run_name if run_name else None,
         ),
         data_collator=transformers.DataCollatorForSeq2Seq(
             tokenizer, pad_to_multiple_of=8, return_tensors="pt", padding=True
